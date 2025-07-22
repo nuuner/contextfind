@@ -2,6 +2,8 @@
 
 A tool to find and display file contents in a directory using fzf, with optional markdown conversion.
 
+![cf demo](./demonstration.gif)
+
 ## Prerequisites
 
 - Go 1.22+ installed.
