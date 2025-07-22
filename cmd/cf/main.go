@@ -1,13 +1,14 @@
 package main
 
 import (
-	"contextfind/utils"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/nuuner/contextfind/utils"
 )
 
 func main() {
