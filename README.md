@@ -1,6 +1,6 @@
 # ContextFind
 
-A tool to find and display file contents in a directory using fzf, with optional markdown conversion.
+A tool to quickly find and get contents of files in a directory. Useful for giving context to LLMs.
 
 ![cf demo](./demonstration.gif)
 
