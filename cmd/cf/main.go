@@ -1,14 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
-	"unicode/utf8"
 
+	"github.com/nuuner/contextfind/internal/commands"
 	"github.com/nuuner/contextfind/utils"
+	"github.com/urfave/cli/v3"
 )
 
 func main() {
@@ -17,80 +16,40 @@ func main() {
 		os.Exit(1)
 	}
 
-	dir := "."
-	if len(os.Args) > 1 {
-		dir = os.Args[1]
+	cmd := &cli.Command{
+		Name:   "cf",
+		Usage:  "Context finder - select files with fzf and output to context",
+		Action: commands.DefaultAction,
+		Commands: []*cli.Command{
+			{
+				Name:      "save",
+				Usage:     "Save selected files as a named context",
+				ArgsUsage: "[name]",
+				Action:    commands.SaveAction,
+			},
+			{
+				Name:      "from",
+				Usage:     "Load and output files from a saved context",
+				ArgsUsage: "[name]",
+				Action:    commands.FromAction,
+			},
+			{
+				Name:      "delete",
+				Usage:     "Delete saved contexts",
+				ArgsUsage: "[name]",
+				Action:    commands.DeleteAction,
+			},
+			{
+				Name:      "update",
+				Usage:     "Update an existing context with new file selection",
+				ArgsUsage: "[name]",
+				Action:    commands.UpdateAction,
+			},
+		},
 	}
 
-	var files []string
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			files = append(files, path)
-		}
-		return nil
-	})
-	if err != nil {
-		fmt.Printf("Error walking directory: %v\n", err)
+	if err := cmd.Run(context.Background(), os.Args); err != nil {
+		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
-	}
-
-	if len(files) == 0 {
-		fmt.Println("No files found.")
-		os.Exit(0)
-	}
-
-	input := strings.Join(files, "\n")
-	cmd := exec.Command("fzf", "--multi")
-	cmd.Stdin = strings.NewReader(input)
-	output, err := cmd.Output()
-	if err != nil {
-		fmt.Printf("Error running fzf: %v\n", err)
-		os.Exit(1)
-	}
-
-	selectedStr := strings.TrimSpace(string(output))
-	if selectedStr == "" {
-		fmt.Println("No files selected.")
-		os.Exit(0)
-	}
-
-	selected := strings.Split(selectedStr, "\n")
-
-	for _, file := range selected {
-		content, err := os.ReadFile(file)
-		if err != nil {
-			fmt.Printf("Error reading %s: %v\n", file, err)
-			continue
-		}
-
-		ext := filepath.Ext(file)
-		lang := strings.TrimPrefix(ext, ".")
-		if lang == "" {
-			lang = "text"
-		}
-
-		isText := utf8.Valid(content)
-		var finalContent string
-		var finalLang string
-
-		if isText {
-			finalContent = string(content)
-			finalLang = lang
-		} else {
-			cmd := exec.Command("markitdown", file)
-			mdBytes, err := cmd.Output()
-			if err != nil {
-				finalContent = fmt.Sprintf("Error converting %s with markitdown: %v", file, err)
-				finalLang = "text"
-			} else {
-				finalContent = string(mdBytes)
-				finalLang = "markdown"
-			}
-		}
-
-		fmt.Printf("## %s\n\n```%s\n%s\n```\n\n", file, finalLang, finalContent)
 	}
 }
