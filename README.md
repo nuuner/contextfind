@@ -9,6 +9,7 @@ A CLI tool for selecting files with fzf and outputting their contents. Includes 
 - Go 1.24+ installed
 - [fzf](https://github.com/junegunn/fzf) (install via `brew install fzf` on macOS)
 - [markitdown](https://github.com/microsoft/markitdown) for binary file conversion
+- [bat](https://github.com/sharkdp/bat) (optional, for syntax highlighting in preview - install via `brew install bat` on macOS)
 
 ## Installation
 

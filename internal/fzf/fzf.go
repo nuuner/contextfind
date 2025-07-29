@@ -9,6 +9,11 @@ import (
 	"unicode/utf8"
 )
 
+func isBatAvailable() bool {
+	_, err := exec.LookPath("bat")
+	return err == nil
+}
+
 func SelectFiles(dir string) ([]string, error) {
 	var files []string
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -45,6 +50,15 @@ func runFzf(items []string, multi bool) ([]string, error) {
 	if multi {
 		args = append(args, "--multi")
 	}
+	
+	var previewCmd string
+	if isBatAvailable() {
+		previewCmd = "sh -c 'bat --color=always --style=numbers --line-range=:500 \"{}\" 2>/dev/null || cat \"{}\" 2>/dev/null || echo \"Preview not available\"'"
+	} else {
+		previewCmd = "sh -c 'cat \"{}\" 2>/dev/null || echo \"Preview not available\"'"
+	}
+	args = append(args, "--preview", previewCmd)
+	args = append(args, "--preview-window", "right:50%:wrap")
 	
 	cmd := exec.Command("fzf", args...)
 	cmd.Stdin = strings.NewReader(input)
