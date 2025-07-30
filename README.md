@@ -1,4 +1,7 @@
-# ContextFind
+<h1>
+  <img src="logo_100x100.png" alt="ContextFind Logo" width="100" height="100" align="left">
+  ContextFind
+</h1>
 
 A CLI tool for selecting files with fzf and outputting their contents. Includes context management for saving and reusing file selections.
 
