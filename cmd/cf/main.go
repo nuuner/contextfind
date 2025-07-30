@@ -45,6 +45,17 @@ func main() {
 				ArgsUsage: "[name]",
 				Action:    commands.UpdateAction,
 			},
+			{
+				Name:   "last",
+				Usage:  "Output files from the last selection",
+				Action: commands.LastAction,
+			},
+			{
+				Name:      "save-last",
+				Usage:     "Save the last selection as a named context",
+				ArgsUsage: "[name]",
+				Action:    commands.SaveLastAction,
+			},
 		},
 	}
 

@@ -32,17 +32,24 @@ go build -o cf ./cmd/cf
 ### Basic File Selection
 
 ```bash
-cf [directory]         # Select files from current or specified directory
+cf [directory]         # Select files from current or specified directory, automatically saves as last selection
 cf | pbcopy            # Copy output to clipboard
+```
+
+### Last Selection
+
+```bash
+cf last                # Output files from the last selection
+cf save-last [name]    # Save the last selection as a named context (prompts if no name provided)
 ```
 
 ### Context Management
 
 ```bash
-cf save [name]         # Save current file selection as named context
+cf save [name]         # Save current file selection as named context (prompts if no name provided)
 cf from [name]         # Load files from saved context
 cf update [name]       # Update existing context with new files
 cf delete [name]       # Delete saved contexts
 ```
 
-If no name is provided, fzf will open for interactive selection. Context configurations are stored in `.contextfind.toml` files.
+If no name is provided for commands like `from`, `update`, or `delete`, fzf will open for interactive selection. Context configurations are stored in `.contextfind.toml` files.

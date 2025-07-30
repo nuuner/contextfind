@@ -5,7 +5,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -14,26 +16,84 @@ func isBatAvailable() bool {
 	return err == nil
 }
 
+func isFdAvailable() bool {
+	_, err := exec.LookPath("fd")
+	return err == nil
+}
+
+type fileInfo struct {
+	path string
+	mod  time.Time
+}
+
 func SelectFiles(dir string) ([]string, error) {
-	var files []string
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	var paths []string
+	var err error
+
+	if isFdAvailable() {
+		cmd := exec.Command("fd", "--type", "f", "--strip-cwd-prefix")
+		cmd.Dir = dir
+		output, err := cmd.Output()
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("error running fd: %w", err)
 		}
-		if !info.IsDir() {
-			files = append(files, path)
+		selectedStr := strings.TrimSpace(string(output))
+		if selectedStr == "" {
+			return nil, fmt.Errorf("no files found")
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error walking directory: %w", err)
+		paths = strings.Split(selectedStr, "\n")
+	} else {
+		var files []fileInfo
+		err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() && strings.HasPrefix(info.Name(), ".") {
+				return filepath.SkipDir
+			}
+			if !info.IsDir() && !strings.HasPrefix(info.Name(), ".") {
+				files = append(files, fileInfo{path: path, mod: info.ModTime()})
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("error walking directory: %w", err)
+		}
+		if len(files) == 0 {
+			return nil, fmt.Errorf("no files found")
+		}
+		// Extract paths after collecting (sorting happens later)
+		paths = make([]string, len(files))
+		for i, f := range files {
+			paths[i] = f.path
+		}
 	}
 
-	if len(files) == 0 {
+	// Now sort all paths by mod time, recent first
+	var fileInfos []fileInfo
+	for _, p := range paths {
+		fullPath := p
+		if isFdAvailable() {
+			fullPath = filepath.Join(dir, p)
+		}
+		info, statErr := os.Stat(fullPath)
+		if statErr == nil {
+			fileInfos = append(fileInfos, fileInfo{path: p, mod: info.ModTime()})
+		}
+	}
+	sort.Slice(fileInfos, func(i, j int) bool {
+		return fileInfos[i].mod.After(fileInfos[j].mod)
+	})
+	sortedPaths := make([]string, len(fileInfos))
+	for i, fi := range fileInfos {
+		sortedPaths[i] = fi.path
+	}
+
+	if len(sortedPaths) == 0 {
 		return nil, fmt.Errorf("no files found")
 	}
 
-	return runFzf(files, true)
+	return runFzf(sortedPaths, true)
 }
 
 func SelectFromList(items []string, multi bool) ([]string, error) {
@@ -45,12 +105,12 @@ func SelectFromList(items []string, multi bool) ([]string, error) {
 
 func runFzf(items []string, multi bool) ([]string, error) {
 	input := strings.Join(items, "\n")
-	
+
 	args := []string{}
 	if multi {
 		args = append(args, "--multi")
 	}
-	
+
 	var previewCmd string
 	if isBatAvailable() {
 		previewCmd = "sh -c 'bat --color=always --style=numbers --line-range=:500 \"{}\" 2>/dev/null || cat \"{}\" 2>/dev/null || echo \"Preview not available\"'"
@@ -59,7 +119,7 @@ func runFzf(items []string, multi bool) ([]string, error) {
 	}
 	args = append(args, "--preview", previewCmd)
 	args = append(args, "--preview-window", "right:50%:wrap")
-	
+
 	cmd := exec.Command("fzf", args...)
 	cmd.Stdin = strings.NewReader(input)
 	output, err := cmd.Output()

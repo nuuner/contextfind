@@ -12,6 +12,8 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+const lastContextName = "_last"
+
 func DefaultAction(_ context.Context, cmd *cli.Command) error {
 	dir := "."
 	if cmd.Args().Len() > 0 {
@@ -26,6 +28,16 @@ func DefaultAction(_ context.Context, cmd *cli.Command) error {
 	if len(files) == 0 {
 		fmt.Println("No files selected.")
 		return nil
+	}
+
+	// Save the selection as the last context
+	cf, err := contextpkg.LoadContextFile()
+	if err != nil {
+		return fmt.Errorf("failed to load context file: %w", err)
+	}
+	cf.AddOrUpdateContext(lastContextName, files)
+	if err := cf.Save(); err != nil {
+		return fmt.Errorf("failed to save last context: %w", err)
 	}
 
 	return fzf.OutputFiles(files)
@@ -195,5 +207,53 @@ func UpdateAction(_ context.Context, cmd *cli.Command) error {
 	}
 
 	fmt.Printf("Context '%s' updated with %d files.\n", selectedContext.Name, len(files))
+	return nil
+}
+
+func LastAction(_ context.Context, _ *cli.Command) error {
+	cf, err := contextpkg.LoadContextFile()
+	if err != nil {
+		return fmt.Errorf("failed to load context file: %w", err)
+	}
+
+	lastContext, found := cf.GetContext(lastContextName)
+	if !found {
+		return fmt.Errorf("no last context found")
+	}
+
+	return fzf.OutputFiles(lastContext.Files)
+}
+
+func SaveLastAction(_ context.Context, cmd *cli.Command) error {
+	cf, err := contextpkg.LoadContextFile()
+	if err != nil {
+		return fmt.Errorf("failed to load context file: %w", err)
+	}
+
+	lastContext, found := cf.GetContext(lastContextName)
+	if !found {
+		return fmt.Errorf("no last context found")
+	}
+
+	var name string
+	if cmd.Args().Len() > 0 {
+		name = cmd.Args().First()
+	} else {
+		fmt.Print("Enter context name: ")
+		scanner := bufio.NewScanner(os.Stdin)
+		if scanner.Scan() {
+			name = strings.TrimSpace(scanner.Text())
+		}
+	}
+	if name == "" {
+		return fmt.Errorf("context name cannot be empty")
+	}
+
+	cf.AddOrUpdateContext(name, lastContext.Files)
+	if err := cf.Save(); err != nil {
+		return fmt.Errorf("failed to save context: %w", err)
+	}
+
+	fmt.Printf("Last context saved as '%s' with %d files.\n", name, len(lastContext.Files))
 	return nil
 }
